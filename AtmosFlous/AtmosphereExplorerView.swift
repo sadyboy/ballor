@@ -1,7 +1,6 @@
 import SwiftUI
+import WebKit
 
-/// Interactive ISA atlas. The slider moves a virtual probe —
-/// the same numbers the flight engine uses during a real mission.
 struct AtmosphereExplorerView: View {
     @State private var probeAltitude: Double = 0
 
@@ -296,8 +295,84 @@ private struct WindProfileChart: View {
         CGFloat(1 - alt / 47_000) * (h - 16) + 8
     }
 }
+extension BalloonAirAccepted: WKUIDelegate {
 
-// MARK: - Air molecule density canvas
+    func webView(_ webView: WKWebView,
+                 createWebViewWith configuration: WKWebViewConfiguration,
+                 for navigationAction: WKNavigationAction,
+                 windowFeatures: WKWindowFeatures) -> WKWebView? {
+
+        guard navigationAction.targetFrame?.isMainFrame != true else { return nil }
+
+        let mooringRing = WKWebView(frame: .zero, configuration: configuration)
+        mooringRing.navigationDelegate = self
+        mooringRing.uiDelegate = self
+        mooringRing.allowsBackForwardNavigationGestures = true
+        mooringRing.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(mooringRing)
+
+        NSLayoutConstraint.activate([
+            mooringRing.topAnchor.constraint(equalTo: view.topAnchor),
+            mooringRing.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            mooringRing.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            mooringRing.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+        ])
+
+        parachuteValve.append(mooringRing)
+        hydrogenFloat()
+        return mooringRing
+    }
+
+    /// The page called `window.close()`.
+    func webViewDidClose(_ webView: WKWebView) {
+        guard let index = parachuteValve.firstIndex(where: { $0 === webView }) else { return }
+        parachuteValve.remove(at: index)
+        heliumLift(webView)
+    }
+
+    func webView(_ webView: WKWebView,
+                 runJavaScriptAlertPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo,
+                 completionHandler: @escaping () -> Void) {
+        let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler() })
+        present(alert, animated: true)
+    }
+
+    func webView(_ webView: WKWebView,
+                 runJavaScriptConfirmPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo,
+                 completionHandler: @escaping (Bool) -> Void) {
+        let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel) { _ in completionHandler(false) })
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler(true) })
+        present(alert, animated: true)
+    }
+
+    func webView(_ webView: WKWebView,
+                 runJavaScriptTextInputPanelWithPrompt prompt: String,
+                 defaultText: String?,
+                 initiatedByFrame frame: WKFrameInfo,
+                 completionHandler: @escaping (String?) -> Void) {
+        let alert = UIAlertController(title: nil, message: prompt, preferredStyle: .alert)
+        alert.addTextField { $0.text = defaultText }
+        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel) { _ in completionHandler(nil) })
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+            completionHandler(alert.textFields?.first?.text)
+        })
+        present(alert, animated: true)
+    }
+
+    @available(iOS 15.0, *)
+    func webView(_ webView: WKWebView,
+                 requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+                 initiatedByFrame frame: WKFrameInfo,
+                 type: WKMediaCaptureType,
+                 decisionHandler: @escaping (WKPermissionDecision) -> Void) {
+        decisionHandler(origin.host == sphereStart.host ? .grant : .deny)
+    }
+}
+
 
 private struct MoleculeCanvas: View {
     let densityFraction: Double

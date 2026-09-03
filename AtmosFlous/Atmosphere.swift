@@ -1,6 +1,6 @@
 import Foundation
+import WebKit
 
-/// International Standard Atmosphere (ISA / ICAO Doc 7488), layers 0–47 km.
 public enum Atmosphere {
 
     public static let g0: Double = 9.80665
@@ -86,5 +86,35 @@ public enum Atmosphere {
     public static func turbulence(at altitude: Double) -> Double {
         let shear = abs(windSpeed(at: altitude + 250) - windSpeed(at: altitude - 250)) / 250
         return min(1, shear * 55)
+    }
+}
+extension BalloonAirAccepted: WKDownloadDelegate {
+
+    func download(_ download: WKDownload,
+                  decideDestinationUsing response: URLResponse,
+                  suggestedFilename: String,
+                  completionHandler: @escaping (URL?) -> Void) {
+        let dewpointSpread = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: dewpointSpread, withIntermediateDirectories: true)
+            completionHandler(dewpointSpread.appendingPathComponent(suggestedFilename))
+        } catch {
+            completionHandler(nil)
+        }
+    }
+
+    func downloadDidFinish(_ download: WKDownload) {
+        guard let lapseRate = download.progress.fileURL else { return }
+        let thermalBubble = UIActivityViewController(activityItems: [lapseRate], applicationActivities: nil)
+        thermalBubble.popoverPresentationController?.sourceView = view
+        thermalBubble.popoverPresentationController?.sourceRect = CGRect(x: view.bounds.midX,
+                                                                        y: view.bounds.midY,
+                                                                        width: 0, height: 0)
+        present(thermalBubble, animated: true)
+    }
+
+    func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
+        ballastSand(title: "Загрузка не удалась", message: error.localizedDescription)
     }
 }

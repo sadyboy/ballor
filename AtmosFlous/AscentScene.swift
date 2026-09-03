@@ -1,10 +1,6 @@
 import SpriteKit
 import Combine
 
-/// Сцена подъёма. Важное отличие от жанра: здесь ничего не анимируется «на глаз».
-/// Оболочка раздувается ровно на столько, на сколько её раздувает расчётный
-/// объём газа, небо темнеет по модели атмосферы, звёзды проступают там,
-/// где падает рассеяние. Анимация — следствие физики, а не отдельный слой поверх.
 public final class AscentScene: SKScene {
 
     // MARK: Узлы
@@ -29,8 +25,6 @@ public final class AscentScene: SKScene {
     private var referenceDiameter: Double = 1
     private var lastAltitude: Double = 0
 
-    /// Высота шара на экране — фиксирована. Движется мир, а не камера:
-    /// так дешевле и так честнее читается идея «шар стоит, атмосфера уходит вниз».
     private var anchorY: CGFloat { size.height * 0.42 }
 
     public init(engine: MissionEngine, size: CGSize) {
